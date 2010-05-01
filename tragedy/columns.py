@@ -63,7 +63,7 @@ class TimestampField(Field):
             
         
     def value_to_display(self, value): # called before displaying data
-        return time.ctime(timestamp.fromUUID(uuid.UUID(bytes=value)))
+        return time.ctime(timestamp.fromUUID(uuid.UUID(hex=value)))
 
     def value_to_external(self, value):
         return uuid.UUID(hex=value).bytes
