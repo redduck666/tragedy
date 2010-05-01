@@ -66,10 +66,10 @@ class TimestampField(Field):
         return time.ctime(timestamp.fromUUID(uuid.UUID(bytes=value)))
 
     def value_to_external(self, value):
-        return uuid.UUID(bytes=value).hex
+        return uuid.UUID(hex=value).bytes
     
     def value_to_internal(self, value):
-        return uuid.UUID(hex=value).bytes
+        return uuid.UUID(bytes=value).hex
 
 class ForeignKey(Field):
     def __init__(self, *args, **kwargs):
