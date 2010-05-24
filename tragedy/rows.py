@@ -454,6 +454,18 @@ class DictRow(BasicRow):
     def update(self):
         return functools.partial(self._update, access_mode='to_internal')
 
+    def remove(self):
+        column_path = ColumnPath(column_family=self._column_family)
+        timestamp = uuid.uuid1().time
+        self._client.remove(
+            str(self._keyspace),
+            self.row_key,
+            column_path,
+            timestamp,
+            ConsistencyLevel.ONE
+        )
+
+
 Model = DictRow
 
 class Index(BasicRow):
