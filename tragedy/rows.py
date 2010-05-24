@@ -3,7 +3,7 @@ import itertools
 import uuid
 from cassandra.ttypes import (Column, ColumnOrSuperColumn, ColumnParent,
     ColumnPath, ConsistencyLevel, NotFoundException, SlicePredicate,
-    SliceRange, SuperColumn)
+    SliceRange, SuperColumn, Mutation, Deletion)
 
 from .datastructures import (OrderedSet,
                              OrderedDict,
@@ -152,6 +152,7 @@ class BasicRow(RowDefaults):
     
     def init(self, *args, **kwargs):
         pass
+
 
     def extract_specs_from_class(self):
         # Extract the columnspecs from this class
@@ -455,6 +456,7 @@ class DictRow(BasicRow):
         return functools.partial(self._update, access_mode='to_internal')
 
     def remove(self):
+        # remove the object from Cassandra
         column_path = ColumnPath(column_family=self._column_family)
         timestamp = uuid.uuid1().time
         self._client.remove(
@@ -508,6 +510,28 @@ class Index(BasicRow):
     def __iter__(self):
         for row_key in self.itervalues():
             yield self.targetmodel.foreign_class(row_key=row_key)
+
+    def remove(self, *objs):
+        # remove the objects from the index
+
+        if not objs:
+            return
+
+        timestamp = uuid.uuid1().time
+        # grab the Index internal keys
+        keys = [i.row_key for i in objs]
+        to_delete = [i for i, j in self.column_value.items() if j in keys]
+
+        mutation = {
+            self.row_key:
+                {
+                    self._column_family: [ 
+                        Mutation(deletion=Deletion(predicate=SlicePredicate(column_names=to_delete), timestamp=timestamp))
+                    ]
+                }
+            }
+
+        self._client.batch_mutate(str(self._keyspace), mutation, ConsistencyLevel.ONE)
 
 # class TimeSortedIndex(Index):
 #     __abstract__ = True
