@@ -1,6 +1,7 @@
 import time
 import uuid
 from . import timestamp
+from .exceptions import TragedyException
 import simplejson as json
 
 class ConvertAPI(object):
