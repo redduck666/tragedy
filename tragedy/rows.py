@@ -101,7 +101,7 @@ class RowDefaults(object):
     @classmethod
     def asCfDef(cls):
         assert cls._order_by in known_sort_orders, 'Unknown sort_by %s' % (cls._order_by,)
-        cfdef = CfDef(table=cls._keyspace.name, name=cls._column_family, column_type=cls._column_type, 
+        cfdef = CfDef(keyspace=cls._keyspace.name, name=cls._column_family, column_type=cls._column_type, 
                       comparator_type=cls._order_by, comment=cls._comment,
                       row_cache_size=cls._row_cache_size, preload_row_cache=cls._preload_row_cache, key_cache_size=cls._key_cache_size,
                       )
@@ -321,7 +321,14 @@ class BasicRow(RowDefaults):
     @staticmethod
     def decodeColumn(colOrSuper):
         # print 'DECODE', colOrSuper.column.name, colOrSuper.column.clock
-        return (colOrSuper.column.name, colOrSuper.column.value)
+        if colOrSuper.super_column:
+            # translate superColumn to dict
+            values = {}
+            for i in colOrSuper.super_column.columns:
+                 values[i.name] = i.value
+            return colOrSuper.super_column.name, values
+        else:
+            return colOrSuper.column.name, colOrSuper.column.value
         
     @classmethod
     def load_multi(cls, ordered=True, *args, **kwargs):
@@ -423,12 +430,25 @@ class BasicRow(RowDefaults):
     def _real_save(self, save_row_key=None, *args, **kwargs):
         save_columns = []
         for column_key, value in self.yield_column_key_value_pairs(for_saving=True):
-            assert isinstance(value, basestring), 'Not basestring %s:%s (%s)' % (column_key, type(value), type(self))
+            col = {}
             newtimestamp = self._timestamp_func()
             import time
+            if self._column_type == 'Standard':
+                assert isinstance(value, basestring), 'Not basestring %s:%s (%s)' % (column_key, type(value), type(self))
+                column = Column(name=column_key, value=value, clock=Clock(timestamp=newtimestamp))
+                save_columns.append( ColumnOrSuperColumn(column=column) )
+                save_columns.append(ColumnOrSuperColumn(column=column))
+            else:
+                # TODO, skips non dict items such as created_at
+                #assert isinstance(value, dict), 'Not dict %s:%s (%s)' % (column_key, type(value), type(self))
+                # translate dict to superColumn
+                if isinstance(value, dict):
+                    cols = []
+                    for k, v in value.items():
+                        cols.append(Column(name=k, value=v, clock=Clock(timestamp=newtimestamp)))
+                    super_column = SuperColumn(name=column_key, columns=cols)
+                    save_columns.append(ColumnOrSuperColumn(super_column=super_column))
             # print 'STORING WITH NEWTIMESTAMP', self.__class__, column_key, newtimestamp #time.ctime( int(newtimestamp) ) 
-            column = Column(name=column_key, value=value, clock=Clock(timestamp=newtimestamp))
-            save_columns.append( ColumnOrSuperColumn(column=column) )
         
         save_mutations = [Mutation(column_or_supercolumn=sc) for sc in save_columns]
         

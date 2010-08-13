@@ -156,6 +156,13 @@ class MissingField(Field):
     def key_to_internal(self, column_key):
         raise TragedyException('No Specification for Key %s' % (column_key,))
 
+class SuperField(Field):
+    def value_to_external(self, value):
+        return value
+    
+    def value_to_internal(self, value):
+        return value
+
 class IntegerField(Field):
     def value_to_external(self, value):
         return int(value)
