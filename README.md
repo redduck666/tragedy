@@ -105,3 +105,26 @@ Come hang out on #cassandra on irc.freenode.net.
     
     if __name__ == '__main__':
         run()
+
+## Example SuperColumn usage
+    from tragedy import *
+    from tragedy.columns import SuperField
+
+    dev_cluster  = Cluster('Dev Cluster')
+    twitty_keyspace = Keyspace('Test', dev_cluster)
+    twitty_keyspace.connect(servers=['127.0.0.1:9160'], framed_transport=True, auto_create_models=True)
+
+    class Test(Model):
+        _column_type = 'Super'
+        id = RowKey(autogenerate=True)
+        test = SuperField()
+
+    def run()
+        test = Test()
+        test['test'] = {'any': 'dict', 'goes': 'here'}
+        print test.save()
+    if __name__ == '__main__':
+        run()
+
+
+
